@@ -42,6 +42,15 @@ def compute_keep_segments(
         for g in detect_freeze_frames(input_path, min_duration=freeze_min_duration):
             cut_ranges.append((max(0.0, g.start), min(duration, g.end)))
 
+    return keep_segments_from_cut_ranges(cut_ranges, duration)
+
+
+def keep_segments_from_cut_ranges(
+    cut_ranges: list[tuple[float, float]],
+    duration: float,
+    min_keep_duration: float = 0.05,
+) -> list[tuple[float, float]]:
+    """제거할 구간(cut_ranges)들을 병합해 남길 구간(keep_segments)으로 뒤집는다."""
     cut_ranges = [(s, e) for s, e in cut_ranges if e > s]
     cut_ranges = _merge_intervals(cut_ranges)
 
@@ -54,8 +63,62 @@ def compute_keep_segments(
     if cursor < duration:
         keep_segments.append((cursor, duration))
 
-    keep_segments = [(s, e) for s, e in keep_segments if e - s > 0.05]
-    return keep_segments
+    return [(s, e) for s, e in keep_segments if e - s > min_keep_duration]
+
+
+def remap_time(t: float, keep_segments: list[tuple[float, float]]) -> float:
+    """원본 타임라인의 시각 t를, keep_segments만 이어붙인 편집본 타임라인의 시각으로 변환한다.
+
+    t가 잘려나간(cut) 구간 안에 있으면 다음 keep_segment의 시작점으로 스냅한다.
+    """
+    cursor = 0.0
+    for start, end in keep_segments:
+        if t < start:
+            return cursor
+        if t <= end:
+            return cursor + (t - start)
+        cursor += end - start
+    return cursor
+
+
+def subtract_protected_ranges(
+    cut_ranges: list[tuple[float, float]],
+    protected_ranges: list[tuple[float, float]],
+) -> list[tuple[float, float]]:
+    """사용자가 프리뷰에서 [ / ] 로 보존 지정한 구간(protected_ranges)을 cut_ranges에서 제외한다."""
+    if not protected_ranges:
+        return cut_ranges
+
+    result: list[tuple[float, float]] = []
+    for start, end in cut_ranges:
+        pieces = [(start, end)]
+        for p_start, p_end in protected_ranges:
+            next_pieces = []
+            for s, e in pieces:
+                if p_end <= s or p_start >= e:
+                    next_pieces.append((s, e))
+                    continue
+                if p_start > s:
+                    next_pieces.append((s, p_start))
+                if p_end < e:
+                    next_pieces.append((p_end, e))
+            pieces = next_pieces
+        result.extend(pieces)
+
+    return [(s, e) for s, e in result if e > s]
+
+
+def remap_segment(
+    start: float,
+    end: float,
+    keep_segments: list[tuple[float, float]],
+) -> tuple[float, float] | None:
+    """세그먼트(start, end)를 편집본 타임라인 기준으로 변환한다. 완전히 잘렸으면 None."""
+    new_start = remap_time(start, keep_segments)
+    new_end = remap_time(end, keep_segments)
+    if new_end - new_start < 0.05:
+        return None
+    return new_start, new_end
 
 
 def cut_video(

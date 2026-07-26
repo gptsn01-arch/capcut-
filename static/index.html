@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>캡컷 에이전트</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #161616;
+    --border: #262626;
+    --text: #ededed;
+    --text-dim: #8a8a8a;
+    --accent: #22c55e;
+    --mono: "SF Mono", "JetBrains Mono", "Menlo", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Inter", "Pretendard", sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: var(--text-dim); font-size: 13px; margin: 0 0 32px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 4px 8px;
+  }
+  .chip.warn { color: #f59e0b; border-color: #3a2f1a; }
+  .chip.ok { color: var(--accent); border-color: #16321f; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .drop {
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .drop:hover, .drop.drag { border-color: var(--accent); color: var(--text); }
+  .drop input { display: none; }
+
+  video {
+    width: 100%;
+    border-radius: 8px;
+    background: #000;
+    display: block;
+  }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .mark-hint {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-top: 10px;
+  }
+  .mark-hint kbd {
+    font-family: var(--mono);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  .mark-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .mark-item {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    display: flex;
+    justify-content: space-between;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+  .mark-item button {
+    background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 12px;
+  }
+
+  .row { display: flex; gap: 8px; align-items: center; }
+  input[type=text] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    flex: 1;
+  }
+  button.primary {
+    background: var(--accent);
+    color: #06210f;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+  .stepper { display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; align-items: center; gap: 10px; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .step.active .dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+  }
+  .step.done .dot { background: var(--accent); }
+  .step .label { font-size: 13px; color: var(--text-dim); }
+  .step.active .label, .step.done .label { color: var(--text); }
+  .step .detail { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); margin-left: auto; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border-radius: 8px; overflow: hidden; }
+  .stat { background: var(--card); padding: 14px; }
+  .stat .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 600; }
+  .stat .label { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+
+  .transcript { max-height: 280px; overflow-y: auto; font-size: 13px; }
+  .transcript .line { padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .transcript .line:last-child { border-bottom: none; }
+  .transcript .t { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11px; margin-right: 8px; }
+  .transcript .line.ng { opacity: 0.4; text-decoration: line-through; }
+
+  .paths { display: flex; flex-direction: column; gap: 6px; }
+  .path-row { font-family: var(--mono); font-size: 12px; color: var(--text-dim); word-break: break-all; }
+  .path-row b { color: var(--text); font-weight: 500; }
+
+  .error { color: #f87171; font-family: var(--mono); font-size: 12.5px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>캡컷 에이전트</h1>
+  <p class="sub">무음·잔말·NG 컷 + 세그먼트 자막을 자동 생성해 캡컷 드래프트로 내보냅니다.</p>
+
+  <div class="chips" id="envChips"></div>
+
+  <div class="card" id="uploadCard">
+    <div class="drop" id="drop">
+      <div>영상 파일을 드래그하거나 클릭해서 선택하세요 (mp4 / mov)</div>
+      <input type="file" id="fileInput" accept="video/mp4,video/quicktime" />
+    </div>
+  </div>
+
+  <div class="card hidden" id="previewCard">
+    <video id="video" controls></video>
+    <div class="mark-hint">
+      영상 재생 중 <kbd>[</kbd> 로 보존 구간 시작, <kbd>]</kbd> 로 보존 구간 끝을 지정하세요.
+      지정된 구간은 무음/잔말/NG로 판단돼도 항상 남습니다.
+    </div>
+    <div class="mark-list" id="markList"></div>
+    <hr />
+    <div class="row">
+      <input type="text" id="draftName" placeholder="드래프트 이름 (비우면 자동 생성)" />
+      <button class="primary" id="startBtn">처리 시작</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="stepperCard">
+    <div class="stepper">
+      <div class="step" data-stage="silence"><div class="dot"></div><div class="label">무음/버벅임 구간 감지</div><div class="detail"></div></div>
+      <div class="step" data-stage="asr"><div class="dot"></div><div class="label">전체 대본(ASR) 추출</div><div class="detail"></div></div>
+      <div class="step" data-stage="filler"><div class="dot"></div><div class="label">잔말/NG 컷 판단</div><div class="detail"></div></div>
+      <div class="step" data-stage="draft"><div class="dot"></div><div class="label">드래프트 + 자막 생성</div><div class="detail"></div></div>
+    </div>
+    <div class="error hidden" id="errorBox"></div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <div class="stats" id="statsGrid"></div>
+    <hr />
+    <div class="paths" id="pathsBox"></div>
+    <hr />
+    <div class="transcript" id="transcriptBox"></div>
+  </div>
+</div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+
+let jobId = null;
+let videoDuration = 0;
+let markIn = null;
+const protectedRanges = [];
+
+async function loadEnv() {
+  const res = await fetch("/api/env");
+  const env = await res.json();
+  const chips = $("#envChips");
+  chips.innerHTML = "";
+  const add = (text, cls) => {
+    const el = document.createElement("span");
+    el.className = "chip" + (cls ? " " + cls : "");
+    el.textContent = text;
+    chips.appendChild(el);
+  };
+  add(`${env.os_name} ${env.machine}`);
+  add(`트랙 ${env.track}`);
+  add(env.whisper_backend);
+  add(`디스크 ${env.disk_free_gb}GB`, env.disk_free_gb < 5 ? "warn" : "ok");
+  add(env.capcut_drafts_dir ? "캡컷 드래프트 폴더 발견" : "캡컷 드래프트 폴더 없음", env.capcut_drafts_dir ? "ok" : "warn");
+}
+loadEnv();
+
+const drop = $("#drop");
+const fileInput = $("#fileInput");
+drop.addEventListener("click", () => fileInput.click());
+["dragover", "dragenter"].forEach(evt => drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
+["dragleave", "drop"].forEach(evt => drop.addEventListener(evt, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
+drop.addEventListener("drop", (e) => { if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener("change", (e) => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
+
+async function uploadFile(file) {
+  const fd = new FormData();
+  fd.append("file", file);
+  drop.textContent = "업로드 중...";
+  const res = await fetch("/api/upload", { method: "POST", body: fd });
+  const data = await res.json();
+  jobId = data.job_id;
+
+  const video = $("#video");
+  video.src = data.preview_url;
+  $("#previewCard").classList.remove("hidden");
+  video.addEventListener("loadedmetadata", () => { videoDuration = video.duration; });
+}
+
+$("#video").addEventListener("keydown", handleMarkKey);
+document.addEventListener("keydown", (e) => {
+  if (document.activeElement && document.activeElement.tagName === "INPUT") return;
+  handleMarkKey(e);
+});
+
+function handleMarkKey(e) {
+  const video = $("#video");
+  if (!video.src) return;
+  if (e.key === "[") {
+    markIn = video.currentTime;
+  } else if (e.key === "]") {
+    if (markIn === null) return;
+    const markOut = video.currentTime;
+    if (markOut > markIn) {
+      protectedRanges.push([markIn, markOut]);
+      renderMarks();
+    }
+    markIn = null;
+  }
+}
+
+function renderMarks() {
+  const list = $("#markList");
+  list.innerHTML = "";
+  protectedRanges.forEach((r, i) => {
+    const row = document.createElement("div");
+    row.className = "mark-item";
+    row.innerHTML = `<span>보존 ${fmtTime(r[0])} → ${fmtTime(r[1])}</span>`;
+    const btn = document.createElement("button");
+    btn.textContent = "삭제";
+    btn.onclick = () => { protectedRanges.splice(i, 1); renderMarks(); };
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(1);
+  return `${m}:${sec.padStart(4, "0")}`;
+}
+
+$("#startBtn").addEventListener("click", startProcessing);
+
+function startProcessing() {
+  if (!jobId) return;
+  $("#startBtn").disabled = true;
+  $("#stepperCard").classList.remove("hidden");
+  $("#resultCard").classList.add("hidden");
+  $("#errorBox").classList.add("hidden");
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active", "done"));
+
+  const draftName = $("#draftName").value.trim();
+  const params = new URLSearchParams({
+    protected_ranges: JSON.stringify(protectedRanges),
+  });
+  if (draftName) params.set("draft_name", draftName);
+
+  const es = new EventSource(`/api/events/${jobId}?${params.toString()}`);
+  es.onmessage = (ev) => {
+    const data = JSON.parse(ev.data);
+    if (data.stage === "error") {
+      showError(data.message);
+      es.close();
+      $("#startBtn").disabled = false;
+      return;
+    }
+    if (data.stage === "complete") {
+      showResult(data);
+      es.close();
+      $("#startBtn").disabled = false;
+      return;
+    }
+    updateStep(data);
+  };
+  es.onerror = () => {
+    es.close();
+    $("#startBtn").disabled = false;
+  };
+}
+
+function updateStep(data) {
+  const el = document.querySelector(`.step[data-stage="${data.stage}"]`);
+  if (!el) return;
+  if (data.status === "start") {
+    el.classList.add("active");
+  } else if (data.status === "done") {
+    el.classList.remove("active");
+    el.classList.add("done");
+    const detail = el.querySelector(".detail");
+    const parts = [];
+    if (data.silence_count !== undefined) parts.push(`무음 ${data.silence_count}`, `프리즈 ${data.freeze_count}`);
+    if (data.segment_count !== undefined) parts.push(`세그먼트 ${data.segment_count}`, data.language);
+    if (data.filler_ng_cut_count !== undefined) parts.push(`컷 ${data.filler_ng_cut_count}`);
+    if (data.kept_segment_count !== undefined) parts.push(`클립 ${data.kept_segment_count}`);
+    detail.textContent = parts.join(" · ");
+  }
+}
+
+function showError(message) {
+  const box = $("#errorBox");
+  box.classList.remove("hidden");
+  box.textContent = "오류: " + message;
+}
+
+function showResult(data) {
+  $("#resultCard").classList.remove("hidden");
+
+  const stats = $("#statsGrid");
+  const totalKept = data.keep_segments.reduce((acc, r) => acc + (r[1] - r[0]), 0);
+  stats.innerHTML = "";
+  const addStat = (num, label) => {
+    const el = document.createElement("div");
+    el.className = "stat";
+    el.innerHTML = `<div class="num">${num}</div><div class="label">${label}</div>`;
+    stats.appendChild(el);
+  };
+  addStat(data.keep_segments.length, "남은 클립 수");
+  addStat(`${totalKept.toFixed(1)}s`, "편집 후 길이");
+  addStat(`${data.duration.toFixed(1)}s`, "원본 길이");
+
+  const paths = $("#pathsBox");
+  paths.innerHTML = `
+    <div class="path-row"><b>드래프트</b> ${data.draft_path}</div>
+    <div class="path-row"><b>자막</b> ${data.srt_path}</div>
+  `;
+
+  const transcriptBox = $("#transcriptBox");
+  transcriptBox.innerHTML = "";
+  data.transcript.segments.forEach((seg, i) => {
+    const line = document.createElement("div");
+    line.className = "line";
+    line.innerHTML = `<span class="t">${fmtTime(seg.start)}</span>${seg.text}`;
+    transcriptBox.appendChild(line);
+  });
+}
+</script>
+</body>
+</html>
