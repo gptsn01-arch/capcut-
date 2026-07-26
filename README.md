@@ -44,6 +44,26 @@ python -m capcut_agent.cli input.mp4 --output-dir ./output
 | `--freeze-min-duration` | 프리즈 최소 지속 시간(초) | 0.3 |
 | `--whisper-model` | Whisper 모델 크기 (tiny/base/small/medium/large) | medium |
 | `--language` | 자막 언어 코드 (`auto`로 자동 감지) | ko |
+| `--capcut-draft-dir` | 지정 시 캡컷 draft(`draft_content.json`)를 이 폴더 밑에 직접 생성 | - |
+| `--draft-name` | 생성할 draft 이름 | 입력 파일명 + `_auto_edit` |
+| `--draft-width` / `--draft-height` / `--draft-fps` | draft 캔버스 해상도/프레임레이트 | 1920 / 1080 / 30 |
+
+## 캡컷 draft 직접 생성 ([pyCapCut](https://github.com/GuanYixuan/pyCapCut) 사용)
+
+`mp4` 파일을 만들어 수동으로 임포트하는 대신, [pyCapCut](https://github.com/GuanYixuan/pyCapCut) 라이브러리로 캡컷이 바로 인식하는 draft 프로젝트를 생성할 수 있습니다. `--capcut-draft-dir`에 캡컷의 실제 drafts 폴더 경로를 넘기면:
+
+```bash
+python -m capcut_agent.cli input.mp4 \
+  --output-dir ./output \
+  --capcut-draft-dir "/path/to/CapCut/User Data/Projects/com.lveditor.draft" \
+  --draft-name my_auto_edit
+```
+
+- 원본 영상은 그대로 두고, 남길 구간(keep_segments)마다 `VideoSegment`를 하나씩 만들어 타임라인에 순서대로 배치합니다 (무음/버벅임 구간만 트리밍되어 빠짐).
+- 생성된 자막(.srt)은 `import_srt`로 자막 트랙에 자동 삽입됩니다.
+- 캡컷 앱을 열면 프로젝트 목록에 바로 나타나고, 각 컷이 개별 클립으로 남아 있어 이어서 다듬을 수 있습니다.
+
+CapCut/드라이브별 drafts 폴더 경로 찾는 법 등 자세한 내용은 pyCapCut 문서를 참고하세요.
 
 ## 동작 원리
 

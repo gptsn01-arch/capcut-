@@ -22,6 +22,16 @@ def main():
     parser.add_argument("--freeze-min-duration", type=float, default=0.3, help="프리즈 최소 지속 시간(초)")
     parser.add_argument("--whisper-model", default="medium", help="Whisper 모델 크기 (tiny/base/small/medium/large)")
     parser.add_argument("--language", default="ko", help="자막 언어 (Whisper 언어 코드, auto 입력 시 자동 감지)")
+    parser.add_argument(
+        "--capcut-draft-dir",
+        default=None,
+        help="지정 시 mp4 대신 pycapcut으로 캡컷 draft(draft_content.json)를 이 폴더 밑에 생성 "
+             "(예: 캡컷의 실제 drafts 폴더 경로)",
+    )
+    parser.add_argument("--draft-name", default=None, help="생성할 캡컷 draft 이름 (기본: 입력 파일명)")
+    parser.add_argument("--draft-width", type=int, default=1920, help="캡컷 draft 캔버스 너비")
+    parser.add_argument("--draft-height", type=int, default=1080, help="캡컷 draft 캔버스 높이")
+    parser.add_argument("--draft-fps", type=int, default=30, help="캡컷 draft 프레임레이트")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -62,6 +72,24 @@ def main():
     print(f"  - 영상: {edited_video_path}")
     if not args.no_subtitles:
         print(f"  - 자막: {srt_path}")
+
+    if args.capcut_draft_dir:
+        from .draft_builder import build_capcut_draft
+
+        draft_name = args.draft_name or f"{input_path.stem}_auto_edit"
+        print(f"\n[+] pycapcut으로 캡컷 draft 생성 중 -> {args.capcut_draft_dir}/{draft_name}")
+        draft_path = build_capcut_draft(
+            str(input_path),
+            keep_segments,
+            args.capcut_draft_dir,
+            draft_name,
+            srt_path=str(srt_path) if not args.no_subtitles else None,
+            width=args.draft_width,
+            height=args.draft_height,
+            fps=args.draft_fps,
+        )
+        print(f"      draft 생성 완료 -> {draft_path}")
+        print("      캡컷 앱을 열면 프로젝트 목록에 바로 나타납니다 (컷된 구간이 개별 클립으로 유지됨).")
 
 
 if __name__ == "__main__":
